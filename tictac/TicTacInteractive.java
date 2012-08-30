@@ -5,6 +5,15 @@ import java.math.*;
 import java.util.regex.*;
 
 public class TicTacInteractive {
+
+/* Complete the function below to print 2 integers separated by a single space which will be your next move 
+   Refer section <i>Output format</i> for more details
+*/
+  static void nextMove(String player, String [] currBoard){
+	  	Board board = new Board(player.charAt(0),currBoard);
+	  	int[] result = board.getNextMove();
+	  	System.out.println(result[0] + " " + result[1]);
+  }
   
   public static void main(String[]args)  
   {  
@@ -13,10 +22,17 @@ public class TicTacInteractive {
    String[] emptyBoard = {"___","___","___"};
    Board board = new Board(Board.O, emptyBoard);
    
-   while(!board.isGameOver()) {
+   System.out.println("Go first? [Y/N]: ");
+   String input=readUserInput.nextLine();  
+   if("N".equals(input.toUpperCase())) {
+	   board.addMark(Board.O,board.maximizedMove()[0]);
+   }
+   
+   while(!board.isGameOver()) {	   
 	   System.out.println(board);
+	   
 	   System.out.println("Enter your play [1-9, Q]: ");  
-	   String input=readUserInput.nextLine();  
+	   input=readUserInput.nextLine();  
 	   if("Q".equals(input.toUpperCase())) {
 		   System.out.println("Goodbye!");
 		   System.exit(0);
@@ -51,6 +67,10 @@ public class TicTacInteractive {
 			{2,5,8},
 			{0,4,8},
 			{2,4,6}			
+	};
+	private int[][] suboptimalHeuristic = {
+			{1,0,0,0,-1,0,0,0,1},
+			{0,0,1,0,-1,0,1,0,0}
 	};
     private char[] cells = new char[9];
     private char player;
@@ -143,10 +163,42 @@ public class TicTacInteractive {
     	return returnArr;
     }
     
+    public int breakTies(Integer[] ties) {
+    	
+    	for(int i = 0; i< ties.length; i++) {
+    		char[] posCopy = Arrays.copyOf(cells,cells.length);
+			posCopy[ties[i]] = player;
+			
+optimal: for(int j = 0;j<this.suboptimalHeuristic.length; j++) {
+				int[] compareCells = suboptimalHeuristic[j];
+				for(int x = 0; x<compareCells.length; x++) {
+					int compare = compareCells[x];
+					if(compare==0&&posCopy[x]!=EMPTY) {
+						continue optimal;
+					} else if (compare==1&&posCopy[x]!=player) {
+						continue optimal;
+					} else if (compare == -1&&posCopy[x]!=opponent) {
+						continue optimal;
+					}
+				}
+				return ties[i];
+			}
+    	}
+    	
+    	Random random = new Random();
+    	return ties[random.nextInt(ties.length)];
+    }
+    
     public int[] maximizedMove() {
     	int[] returnArr = new int[2];
-    	int bestscore = -2;
+    	int bestscore = Integer.MIN_VALUE;
     	int bestmove = -2;
+    	
+    	// Collect ties for use in tie/breaker method
+    	Map<Integer,List<Integer>> tieMap = new HashMap<Integer, List<Integer>>();
+    	tieMap.put(0, new ArrayList<Integer>());
+    	tieMap.put(-1, new ArrayList<Integer>());
+    	tieMap.put(1, new ArrayList<Integer>());
     	
     	for(int i = 0;i<cells.length;i++) {
     		int score = -1;
@@ -161,14 +213,16 @@ public class TicTacInteractive {
     			} else {
     				score = nextBoard.minimizedMove()[1];
     			}
-    			if(bestscore == -2 || score>bestscore) {
-        			bestscore = score;
-        			bestmove = i;
-        		} else if (score==bestscore && Math.random()>0.5) {
+    			tieMap.get(score).add(i);
+    			if(score>bestscore) {
         			bestscore = score;
         			bestmove = i;
         		}
     		}
+    	}
+    	List<Integer> ties = tieMap.get(bestscore);
+    	if(ties.size()>1) {
+    		bestmove = breakTies(ties.toArray(new Integer[ties.size()]));
     	}
     	returnArr[0] = bestmove;
     	returnArr[1] = bestscore;
